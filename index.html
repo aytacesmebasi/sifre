@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gizli Üs Girişi</title>
+<style>
+  * { box-sizing: border-box; }
+  body { 
+    background: #0a0a0a; 
+    color: white; 
+    font-family: 'Courier New', Courier, monospace; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    height: 100vh; 
+    margin: 0; 
+    user-select: none; 
+    -webkit-user-select: none; 
+    transition: background-color 0.3s;
+  }
+  #display { 
+    font-size: 3rem; 
+    margin-bottom: 40px; 
+    height: 60px; 
+    letter-spacing: 10px; 
+    color: #0f0; 
+    text-shadow: 0 0 15px #0f0; 
+    text-align: center;
+    white-space: nowrap;
+  }
+  .grid { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 20px; 
+  }
+  .key { 
+    background: #1a1a1a; 
+    border: 2px solid #333; 
+    border-radius: 50%; 
+    width: 80px; 
+    height: 80px; 
+    font-size: 2.5rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.8); 
+    cursor: pointer;
+  }
+  .key:active { 
+    background: #333; 
+    transform: scale(0.95); 
+  }
+  body.granted { background: #003300; }
+  body.granted #display { color: #0f0; text-shadow: 0 0 20px #0f0; }
+  body.denied { background: #440000; }
+  body.denied #display { color: #f00; text-shadow: 0 0 20px #f00; }
+</style>
+</head>
+<body>
+
+<div id="display">------</div>
+
+<div class="grid">
+  <div class="key" onclick="press('1')">1</div>
+  <div class="key" onclick="press('2')">2</div>
+  <div class="key" onclick="press('3')">3</div>
+  <div class="key" onclick="press('4')">4</div>
+  <div class="key" onclick="press('5')">5</div>
+  <div class="key" onclick="press('6')">6</div>
+  <div class="key" onclick="press('7')">7</div>
+  <div class="key" onclick="press('8')">8</div>
+  <div class="key" onclick="press('9')">9</div>
+  <div class="key" onclick="press('*')">*</div>
+  <div class="key" onclick="press('0')">0</div>
+  <div class="key" onclick="press('#')">#</div>
+</div>
+
+<script>
+  const SECRET = "167010"; 
+  let input = "";
+  const display = document.getElementById('display');
+  
+  let audioCtx;
+
+  // iOS için ses motorunu ilk dokunuşta zorla uyandırma fonksiyonu
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
+
+  // Ekrana ilk dokunuşta sesi aktif et
+  document.body.addEventListener('touchstart', initAudio, { once: true });
+  document.body.addEventListener('click', initAudio, { once: true });
+
+  function playTone(freq, type, duration) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  function press(key) {
+    initAudio(); 
+    
+    if (key === '*') {
+      input = "";
+      updateDisplay();
+      playTone(300, 'sine', 0.1);
+      return;
+    }
+    
+    if (key === '#') {
+      checkCode();
+      return;
+    }
+
+    if (input.length < 6) {
+      input += key;
+      playTone(800, 'sine', 0.1); 
+      updateDisplay();
+    }
+  }
+
+  function updateDisplay() {
+    display.style.fontSize = "3rem";
+    display.style.letterSpacing = "10px";
+    
+    let str = "";
+    for(let i=0; i<6; i++) {
+      if(i < input.length) {
+        str += "*";
+      } else {
+        str += "-";
+      }
+    }
+    display.innerText = str;
+  }
+
+  function checkCode() {
+    initAudio();
+    if (input === SECRET) {
+      display.style.fontSize = "2.2rem";
+      display.style.letterSpacing = "3px";
+      display.innerText = "DOĞRU ŞİFRE";
+      document.body.className = "granted";
+      playTone(1200, 'square', 0.1); 
+      setTimeout(() => playTone(1600, 'square', 0.4), 150); 
+      setTimeout(reset, 2500);
+    } else {
+      display.style.fontSize = "2.5rem";
+      display.style.letterSpacing = "5px";
+      display.innerText = "HATA";
+      document.body.className = "denied";
+      playTone(150, 'sawtooth', 0.7); 
+      setTimeout(reset, 2000);
+    }
+  }
+
+  function reset() {
+    input = "";
+    document.body.className = "";
+    updateDisplay();
+  }
+  
+  updateDisplay();
+</script>
+</body>
+</html>
